@@ -33,7 +33,38 @@
 #include "drivers/TC_driver.h"
 #include "drivers/event_system_driver.h"
 
-void setup_port( PORT_t * port );
+
+#define SEAT1 0
+#define SEAT2 1
+#define SEAT3 2
+#define SEAT4 3
+
+#define SEAT1_PORT &PORTA
+#define SEAT2_PORT &PORTB
+#define SEAT3_PORT &PORTC
+#define SEAT4_PORT &PORTD
+
+#define SEAT1_TIMER &TCC0
+#define SEAT2_TIMER &TCD0
+#define SEAT3_TIMER &TCE0
+#define SEAT4_TIMER &TCF0
+
+//#define SEAT1_EVCHNL TC_EVSEL_CH0_gc
+//#define SEAT2_EVCHNL TC_EVSEL_CH1_gc
+//#define SEAT3_EVCHNL TC_EVSEL_CH2_gc
+//#define SEAT4_EVCHNL TC_EVSEL_CH3_gc
+//
+//#define SEAT1_EVSRC EVSYS_CHMUX_PORTA_PIN2_gc
+//#define SEAT2_EVSRC EVSYS_CHMUX_PORTB_PIN2_gc
+//#define SEAT3_EVSRC EVSYS_CHMUX_PORTC_PIN2_gc
+//#define SEAT4_EVSRC EVSYS_CHMUX_PORTD_PIN2_gc
+
+
+uint8_t SEAT_MASK = 0x00;
+
+void setup_seat( PORT_t * port, TC0_t * tc);
+void detect_occupancy(uint8_t seat_number, PORT_t * port, TC0_t * tc);
+void stimulate_sensor(PORT_t * port, TC0_t * tc);
 
 int main (void)
 {
@@ -41,24 +72,11 @@ int main (void)
 
 	board_init();
 	
-	/* Setup all 4 ports for 4 seats*/
-	setup_port(&PORTA);
-	setup_port(&PORTB);
-	setup_port(&PORTC);
-	setup_port(&PORTD);
-	
-	/* Setup event system. */
-	EVSYS_SetEventSource(0, EVSYS_CHMUX_PORTA_PIN0_gc);
-	EVSYS_SetEventSource(1, EVSYS_CHMUX_PORTA_PIN2_gc);
-	
-	EVSYS_SetEventSource(2, EVSYS_CHMUX_PORTB_PIN0_gc);
-	EVSYS_SetEventSource(3, EVSYS_CHMUX_PORTB_PIN2_gc);
-	
-	EVSYS_SetEventSource(4, EVSYS_CHMUX_PORTC_PIN0_gc);
-	EVSYS_SetEventSource(5, EVSYS_CHMUX_PORTC_PIN2_gc);
-	
-	EVSYS_SetEventSource(6, EVSYS_CHMUX_PORTD_PIN0_gc);
-	EVSYS_SetEventSource(7, EVSYS_CHMUX_PORTD_PIN2_gc);
+	/* Setup all 4 seats*/
+	setup_seat(SEAT1_PORT, SEAT1_TIMER);
+	setup_seat(SEAT2_PORT, SEAT2_TIMER);
+	setup_seat(SEAT3_PORT, SEAT3_TIMER);
+	setup_seat(SEAT4_PORT, SEAT4_TIMER);
 	
 	/* Enable medium level interrupts in the PMIC. */
 	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
@@ -66,36 +84,87 @@ int main (void)
 	/* Enable the global interrupt flag. */
 	sei();
 	
+	stimulate_sensor(SEAT1_PORT, SEAT1_TIMER);
+	stimulate_sensor(SEAT2_PORT, SEAT2_TIMER);
+	stimulate_sensor(SEAT3_PORT, SEAT3_TIMER);
+	stimulate_sensor(SEAT4_PORT, SEAT4_TIMER);
+	
 	while(true){
 
 	}
 }
 
-void setup_port( PORT_t * port)
+ISR(PORTA_INT0_vect)
 {
-	/* Configure pin 0 as output, triggered on rising edges. */
-	PORT_ConfigurePins( port,
-	0x01,
-	false,
-	false,
-	PORT_OPC_TOTEM_gc,
-	PORT_ISC_RISING_gc);
-	
-	PORT_SetPinAsOutput( port, 0x01 );
+	detect_occupancy(SEAT1, SEAT1_PORT, SEAT1_TIMER);
+	stimulate_sensor(SEAT1_PORT, SEAT1_TIMER);
+}
+
+ISR(PORTB_INT0_vect)
+{
+	detect_occupancy(SEAT2, SEAT2_PORT, SEAT2_TIMER);
+	stimulate_sensor(SEAT2_PORT, SEAT2_TIMER);
+}
+
+ISR(PORTC_INT0_vect)
+{
+	detect_occupancy(SEAT3, SEAT3_PORT, SEAT3_TIMER);
+	stimulate_sensor(SEAT3_PORT, SEAT3_TIMER);
+}
+
+ISR(PORTD_INT0_vect)
+{
+	detect_occupancy(SEAT4, SEAT4_PORT, SEAT4_TIMER);
+	stimulate_sensor(SEAT4_PORT, SEAT4_TIMER);
+}
+
+void setup_seat( PORT_t * port, TC0_t * tc)
+{
+	PORT_SetPinAsOutput( port, PIN1_bm );
 	
 	/* Configure pin 2 as input, triggered on falling edges. */
 	PORT_ConfigurePins( port,
-	0x04, // pin 2 supports full asynchronous sense
+	PIN2_bm, // pin 2 supports full asynchronous sense
 	false,
 	false,
 	PORT_OPC_TOTEM_gc,
-	PORT_ISC_FALLING_gc);
-
-	PORT_SetPinsAsInput( port, 0x04 );
-
-	/* Configure Interrupt0 to have medium interrupt level, triggered by pin 0. */
-	PORT_ConfigureInterrupt0( port, PORT_INT0LVL_MED_gc, 0x01 );
+	PORT_ISC_BOTHEDGES_gc);
 	
-	/* Configure Interrupt1 to have medium interrupt level, triggered by pin 2. */
-	PORT_ConfigureInterrupt1( port, PORT_INT1LVL_MED_gc, 0x04 );
+	PORT_SetPinsAsInput( port, PIN2_bm );
+	
+	/* Configure Interrupt0 to have medium interrupt level, triggered by pin 2. */
+	PORT_ConfigureInterrupt1( port, PORT_INT0LVL_MED_gc, PIN2_bm );
+	
+	/* Set period/TOP value. */
+	TC_SetPeriod( tc, 0x1000 );
+	
+}
+
+void detect_occupancy(uint8_t seat_number, PORT_t * port, TC0_t * tc)
+{
+	if(port->OUT & PIN0_bm)
+	{
+		PORT_ClearPins(port, PIN0_bm);
+		return;
+	}
+	
+	if (TC_GetOverflowFlag(tc))
+	{
+		SEAT_MASK |= (0x01 << seat_number);
+	}
+	else
+	{
+		SEAT_MASK &= ~(0x01 << seat_number);
+	}
+	
+	/* Select clock source. */
+	TC0_ConfigClockSource( &TCC0, TC_CLKSEL_OFF_gc );
+	/* Clear overflow flag. */
+	TC_ClearOverflowFlag( tc );
+}
+
+void stimulate_sensor(PORT_t * port, TC0_t * tc)
+{
+	PORT_SetPins(port, PIN0_bm);
+	TC0_ConfigClockSource( tc , TC_CLKSEL_DIV1_gc );
 }
