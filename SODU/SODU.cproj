@@ -230,16 +230,16 @@
     <Folder Include="src\drivers" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\drivers\event_system_driver.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\drivers\event_system_driver.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="src\drivers\port_driver.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\drivers\port_driver.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\drivers\seat_driver.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\drivers\seat_driver.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\drivers\TC_driver.c">
