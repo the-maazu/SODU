@@ -63,8 +63,8 @@
 uint8_t SEAT_MASK = 0x00;
 
 void setup_seat( PORT_t * port, TC0_t * tc);
-void detect_occupancy(uint8_t seat_number, PORT_t * port, TC0_t * tc);
-void stimulate_sensor(PORT_t * port, TC0_t * tc);
+void check_seat(uint8_t seat_number, PORT_t * port, TC0_t * tc);
+void stimulate_seat(PORT_t * port, TC0_t * tc);
 
 int main (void)
 {
@@ -84,38 +84,37 @@ int main (void)
 	/* Enable the global interrupt flag. */
 	sei();
 	
-	stimulate_sensor(SEAT1_PORT, SEAT1_TIMER);
-	stimulate_sensor(SEAT2_PORT, SEAT2_TIMER);
-	stimulate_sensor(SEAT3_PORT, SEAT3_TIMER);
-	stimulate_sensor(SEAT4_PORT, SEAT4_TIMER);
+	stimulate_seat(SEAT1_PORT, SEAT1_TIMER);
+	stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
+	stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
+	stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
 	
 	while(true){
-
 	}
 }
 
 ISR(PORTA_INT0_vect)
 {
-	detect_occupancy(SEAT1, SEAT1_PORT, SEAT1_TIMER);
-	stimulate_sensor(SEAT1_PORT, SEAT1_TIMER);
+	check_seat(SEAT1, SEAT1_PORT, SEAT1_TIMER);
+	stimulate_seat(SEAT1_PORT, SEAT1_TIMER);
 }
 
 ISR(PORTB_INT0_vect)
 {
-	detect_occupancy(SEAT2, SEAT2_PORT, SEAT2_TIMER);
-	stimulate_sensor(SEAT2_PORT, SEAT2_TIMER);
+	check_seat(SEAT2, SEAT2_PORT, SEAT2_TIMER);
+	stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
 }
 
 ISR(PORTC_INT0_vect)
 {
-	detect_occupancy(SEAT3, SEAT3_PORT, SEAT3_TIMER);
-	stimulate_sensor(SEAT3_PORT, SEAT3_TIMER);
+	check_seat(SEAT3, SEAT3_PORT, SEAT3_TIMER);
+	stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
 }
 
 ISR(PORTD_INT0_vect)
 {
-	detect_occupancy(SEAT4, SEAT4_PORT, SEAT4_TIMER);
-	stimulate_sensor(SEAT4_PORT, SEAT4_TIMER);
+	check_seat(SEAT4, SEAT4_PORT, SEAT4_TIMER);
+	stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
 }
 
 void setup_seat( PORT_t * port, TC0_t * tc)
@@ -140,7 +139,7 @@ void setup_seat( PORT_t * port, TC0_t * tc)
 	
 }
 
-void detect_occupancy(uint8_t seat_number, PORT_t * port, TC0_t * tc)
+void check_seat(uint8_t seat_number, PORT_t * port, TC0_t * tc)
 {
 	if(port->OUT & PIN0_bm)
 	{
@@ -157,14 +156,16 @@ void detect_occupancy(uint8_t seat_number, PORT_t * port, TC0_t * tc)
 		SEAT_MASK &= ~(0x01 << seat_number);
 	}
 	
-	/* Select clock source. */
-	TC0_ConfigClockSource( &TCC0, TC_CLKSEL_OFF_gc );
+	/* Switch clock off. */
+	TC0_ConfigClockSource( tc , TC_CLKSEL_OFF_gc );
 	/* Clear overflow flag. */
 	TC_ClearOverflowFlag( tc );
 }
 
-void stimulate_sensor(PORT_t * port, TC0_t * tc)
+void stimulate_seat(PORT_t * port, TC0_t * tc)
 {
+	/* Clear CNT register*/
+	tc->CNT = 0x0000;
 	PORT_SetPins(port, PIN0_bm);
 	TC0_ConfigClockSource( tc , TC_CLKSEL_DIV1_gc );
 }
