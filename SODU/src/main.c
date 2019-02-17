@@ -29,25 +29,9 @@
  * Support and FAQ: visit <a href="https://www.microchip.com/support/">Microchip Support</a>
  */
 #include <asf.h>
-#include "drivers/seat_driver.h"
 #include "drivers/GPS_driver.h"
 #include "drivers/port_driver.h"
 #include "string.h"
-
-#define SEAT1 0
-#define SEAT2 1
-#define SEAT3 2
-#define SEAT4 3
-
-#define SEAT1_PORT &PORTA
-#define SEAT2_PORT &PORTB
-#define SEAT3_PORT &PORTC
-#define SEAT4_PORT &PORTD
-
-#define SEAT1_TIMER &TCC0
-#define SEAT2_TIMER &TCD0
-#define SEAT3_TIMER &TCE0
-#define SEAT4_TIMER &TCF0
 
 #define GPS_PORT &PORTE
 #define GPS_UART &USARTE0
@@ -61,12 +45,6 @@ int main (void)
 
 	board_init();
 	
-	/* Setup all 4 seats*/
-	//seat_init(SEAT1_PORT, SEAT1_TIMER);
-	//seat_init(SEAT2_PORT, SEAT2_TIMER);
-	//seat_init(SEAT3_PORT, SEAT3_TIMER);
-	//seat_init(SEAT4_PORT, SEAT4_TIMER);
-	
 	gps_init(GPS_PORT, GPS_UART);
 		
 	/* Enable medium and high level interrupts in the PMIC. */
@@ -78,11 +56,6 @@ int main (void)
 	/* test code*/
 	gfx_mono_init();
 	gpio_set_pin_high(NHD_C12832A1Z_BACKLIGHT);
-	
-	//stimulate_seat(SEAT1_PORT, SEAT1_TIMER);
-	//stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
-	//stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
-	//stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
 	
 	while(true)
 	{
@@ -96,30 +69,6 @@ int main (void)
 		}	
 	}
 }
-
-//ISR(PORTA_INT0_vect)
-//{
-	//check_seat(SEAT1, SEAT1_PORT, SEAT1_TIMER);
-	//stimulate_seat(SEAT1_PORT, SEAT1_TIMER);
-//}
-//
-//ISR(PORTB_INT0_vect)
-//{
-	//check_seat(SEAT2, SEAT2_PORT, SEAT2_TIMER);
-	//stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
-//}
-//
-//ISR(PORTC_INT0_vect)
-//{
-	//check_seat(SEAT3, SEAT3_PORT, SEAT3_TIMER);
-	//stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
-//}
-//
-//ISR(PORTD_INT0_vect)
-//{
-	//check_seat(SEAT4, SEAT4_PORT, SEAT4_TIMER);
-	//stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
-//}
 
 ISR(GPS_INTVECT)
 {
