@@ -30,7 +30,6 @@
  */
 #include <asf.h>
 #include "drivers/seat_driver.h"
-#include "drivers/GPS_driver.h"
 #include "drivers/port_driver.h"
 #include "string.h"
 
@@ -49,12 +48,6 @@
 #define SEAT3_TIMER &TCE0
 #define SEAT4_TIMER &TCF0
 
-#define GPS_PORT &PORTE
-#define GPS_UART &USARTE0
-#define GPS_INTVECT USARTE0_RXC_vect
-
-uint8_t gps_data[82];
-
 int main (void)
 {
 	/* Insert system clock initialization code here (sysclk_init()). */
@@ -62,67 +55,47 @@ int main (void)
 	board_init();
 	
 	/* Setup all 4 seats*/
-	//seat_init(SEAT1_PORT, SEAT1_TIMER);
-	//seat_init(SEAT2_PORT, SEAT2_TIMER);
-	//seat_init(SEAT3_PORT, SEAT3_TIMER);
-	//seat_init(SEAT4_PORT, SEAT4_TIMER);
-	
-	gps_init(GPS_PORT, GPS_UART);
-		
+	seat_init(SEAT1_PORT, SEAT1_TIMER);
+	seat_init(SEAT2_PORT, SEAT2_TIMER);
+	seat_init(SEAT3_PORT, SEAT3_TIMER);
+	seat_init(SEAT4_PORT, SEAT4_TIMER);
+			
 	/* Enable medium and high level interrupts in the PMIC. */
 	PMIC.CTRL |= (PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm) ;
 
 	/* Enable the global interrupt flag. */
 	sei();
 	
-	/* test code*/
-	gfx_mono_init();
-	gpio_set_pin_high(NHD_C12832A1Z_BACKLIGHT);
-	
-	//stimulate_seat(SEAT1_PORT, SEAT1_TIMER);
-	//stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
-	//stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
-	//stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
+	stimulate_seat(SEAT1_PORT, SEAT1_TIMER);
+	stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
+	stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
+	stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
 	
 	while(true)
 	{
-		/* test code*/
-		uint8_t gps_data[10];
-		if(gps_data_available())
-		{
-			memcpy(gps_data, get_gps_data(), 10);
-			gfx_mono_draw_string( (char *) gps_data , 20, 8, &sysfont);
-			gpio_toggle_pin(LED1);	
-		}	
 	}
 }
 
-//ISR(PORTA_INT0_vect)
-//{
-	//check_seat(SEAT1, SEAT1_PORT, SEAT1_TIMER);
-	//stimulate_seat(SEAT1_PORT, SEAT1_TIMER);
-//}
-//
-//ISR(PORTB_INT0_vect)
-//{
-	//check_seat(SEAT2, SEAT2_PORT, SEAT2_TIMER);
-	//stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
-//}
-//
-//ISR(PORTC_INT0_vect)
-//{
-	//check_seat(SEAT3, SEAT3_PORT, SEAT3_TIMER);
-	//stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
-//}
-//
-//ISR(PORTD_INT0_vect)
-//{
-	//check_seat(SEAT4, SEAT4_PORT, SEAT4_TIMER);
-	//stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
-//}
-
-ISR(GPS_INTVECT)
+ISR(PORTA_INT0_vect)
 {
-	buffer_gps_data();
-	gpio_toggle_pin(LED0);
+	check_seat(SEAT1, SEAT1_PORT, SEAT1_TIMER);
+	stimulate_seat(SEAT1_PORT, SEAT1_TIMER);
+}
+
+ISR(PORTB_INT0_vect)
+{
+	check_seat(SEAT2, SEAT2_PORT, SEAT2_TIMER);
+	stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
+}
+
+ISR(PORTC_INT0_vect)
+{
+	check_seat(SEAT3, SEAT3_PORT, SEAT3_TIMER);
+	stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
+}
+
+ISR(PORTD_INT0_vect)
+{
+	check_seat(SEAT4, SEAT4_PORT, SEAT4_TIMER);
+	stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
 }
