@@ -64,3 +64,8 @@ void stimulate_seat(PORT_t * port, TC0_t * tc)
 	PORT_SetPins(port, PIN0_bm);
 	TC0_ConfigClockSource( tc , TC_CLKSEL_DIV1_gc );
 }
+
+uint8_t get_seat_mask()
+{
+	return SEAT_MASK;
+}

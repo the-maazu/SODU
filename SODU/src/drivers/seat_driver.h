@@ -17,4 +17,6 @@ void check_seat(uint8_t seat_number, PORT_t * port, TC0_t * tc);
 
 void stimulate_seat(PORT_t * port, TC0_t * tc);
 
+uint8_t get_seat_mask(void);
+
 #endif /* SEAT_DRIVER_H_ */
