@@ -492,10 +492,16 @@
     <None Include="src\ASF\xmega\drivers\usart\usart.h">
       <SubType>compile</SubType>
     </None>
+    <Compile Include="src\drivers\GSM_driver.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\drivers\GPS_driver.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\drivers\GPS_driver.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\drivers\GSM_driver.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\drivers\port_driver.c">
