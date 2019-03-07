@@ -44,6 +44,7 @@ int main (void)
 	board_init();
 	
 	gfx_mono_init();
+	gpio_set_pin_high(NHD_C12832A1Z_BACKLIGHT);
 	
 	/* Enable medium and high level interrupts in the PMIC. */
 	PMIC.CTRL |= (PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm | PMIC_LOLVLEN_bm) ;
@@ -63,12 +64,9 @@ int main (void)
 ISR(GSM_RXC_vect)
 {
 	buffer_gsm_data();
-	gpio_toggle_pin(LED1);
 }
 
 ISR(GSM_DATA_REG_EMPTY_VECT)
 {
 	gsm_data_reg_empty();
-	delay_us(1000000);
-	gpio_toggle_pin(LED0);
 }

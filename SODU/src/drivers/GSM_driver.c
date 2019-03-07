@@ -11,7 +11,7 @@
 #include "gfx_mono.h"
 
 USART_data_t gsm_usart_data;
-bool gsm_response = false;
+volatile bool gsm_response = false;
 
 PROGMEM_DECLARE(char const, config_bearer_contype[]) = "AT+SAPBR=3,1,\"Contype\",\"GPRS\"\r";
 PROGMEM_DECLARE(char const, config_bearer_apn[]) = "AT+SAPBR=3,1,\"APN\",\"internet\"\r";
@@ -33,15 +33,21 @@ bool response_OK(void)
 	while(!gsm_response);
 	
 	uint8_t tempRX_Tail = gsm_usart_data.buffer.RX_Tail;
+	uint8_t tempRX_Head = gsm_usart_data.buffer.RX_Head;
+	uint8_t data_size = GetRXBufferIndex(tempRX_Head - tempRX_Tail);
 	
 	/* Clear buffer and set response to false*/
-	gsm_usart_data.buffer.RX_Tail = gsm_usart_data.buffer.RX_Head;
+	for( uint8_t i = 0 ; i < data_size; i++)
+	{
+		USART_RXBuffer_GetByte(&gsm_usart_data);
+	}
 	gsm_response = false;
 	
 	/* Handle response */
 	if(gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Tail + 2) ] == 'O'
 		&& gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Tail + 3) ] == 'K')
 	{
+		gfx_mono_draw_string( "Ok", 20, 8, &sysfont);
 		return true;
 	}
 	
@@ -52,15 +58,14 @@ void command_gsm_module(PROGMEM_DECLARE(char const, string[]));
 void command_gsm_module(PROGMEM_DECLARE(char const, string[]))
 {
 	uint8_t i = 0;
-	char j[1];
-	
-	gfx_mono_draw_string( itoa(strlen_P(string), j, 10), 20, 8, &sysfont);
 	
 	while(i < strlen_P(string))
 	{		
 		bool byteToBuffer;
 		byteToBuffer = USART_TXBuffer_PutByte(&gsm_usart_data, pgm_read_byte(string+i));
 		if(byteToBuffer){
+			delay_us(1000000);
+			gpio_toggle_pin(LED0);
 			i++;
 		}
 	}
@@ -101,6 +106,7 @@ bool http_init(void)
 	if(!response_OK())
 	return false;
 	
+	gpio_set_pin_low(LED0);
 	return true;
 }
 
