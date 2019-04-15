@@ -51,18 +51,24 @@ void buffer_gsm_data()
 	
 	uint8_t tempRX_Head = gsm_usart_data.buffer.RX_Head;
 	uint8_t tempRX_Tail = gsm_usart_data.buffer.RX_Tail;
-	gsm_response_size = GetRXBufferIndex(tempRX_Head - tempRX_Tail);
-	
-	if( gsm_response_size > 4)
-	{
-		//if( gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Tail + 0)] == '\r'
-		//&& gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Tail + 1)] == '\n'
-		//&& gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Head - 1)] == '\n'
-		//&& gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Tail - 2)] == '\r')
-		//{
-			gsm_response_ready = true;
-		//}
-		//else USART_RXBuffer_GetByte(&gsm_usart_data);
+	uint8_t buffered_size = GetRXBufferIndex(tempRX_Head - tempRX_Tail);
+
+	if( buffered_size > 5)
+	{	
+		if( gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Tail + 0)] == '\r'
+		&& gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Tail + 1)] == '\n')
+		//&& !( gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Head + 2)] == '\n'
+		//|| gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Head + 2)] == '\r'
+		//|| gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Head + 2)] == 'A' ) )
+		{
+			if (gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Head - 2)] == '\r'
+			&& gsm_usart_data.buffer.RX[GetRXBufferIndex(tempRX_Head - 1)] == '\n')
+			{
+				gsm_response_ready = true;
+				gsm_response_size = buffered_size;
+			}
+		}
+		else USART_RXBuffer_GetByte(&gsm_usart_data);
 	}
 }
 
@@ -91,19 +97,22 @@ bool gsm_response_available()
 
 uint8_t * get_gsm_response()
 {	
-	uint8_t * gsm_response = malloc(2);
-	uint8_t byte = 0;
+	uint8_t * gsm_response = malloc(gsm_response_size - 4);
+	
 	/* Copy response message to gsm_data*/
-	for(uint8_t i = 0; i < gsm_response_size; i++)
+	uint8_t byte = 0;
+	for(uint8_t i = 0 ; i < gsm_response_size; i++)
 	{
 		byte = USART_RXBuffer_GetByte(&gsm_usart_data);
-		if( i == 2 || i == 3)
+		
+		if ( i > 1 && i <gsm_response_size - 2)
 		gsm_response[i-2] = byte;
 		
 	}
 	
 	/* start afresh */
 	gsm_response_ready = false;
+	gsm_response_size = 0;
 	
 	return gsm_response; 
 }

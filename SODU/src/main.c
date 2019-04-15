@@ -57,15 +57,15 @@ int main (void)
 	
 	
 	/* test code */
-	char * string = "AT+SAPBR=3,1,\"Contype\",\"GPRS\"\r";
-	char response[2];
+	char * string = "ATE0\r";
+	char response[4];
 	uint32_t i = 0;
 	
 	while(true)
 	{
 		command_gsm_module((uint8_t *) string, strlen(string));
 		
-		i = 1000000;
+		i = 250000;
 		while(!gsm_response_available())
 		{
 			i--;
@@ -76,7 +76,7 @@ int main (void)
 		gfx_mono_draw_string("Timeout"  , 20,8, &sysfont);
 		else
 		{
-			memcpy(response, (char *) get_gsm_response(), 2);
+			memcpy(response, (char *) get_gsm_response(), 4);
 			//strncpy(response,(char *) get_gsm_response(), 2);
 			gfx_mono_draw_string(response, 20,8, &sysfont);
 		}
@@ -86,13 +86,10 @@ int main (void)
 
 ISR(GSM_RXC_vect)
 {
-	gpio_toggle_pin(LED0);
 	buffer_gsm_data();
 }
 
 ISR(GSM_DATA_REG_EMPTY_VECT)
 {
-	delay_us(50000);
-	gpio_toggle_pin(LED1);
 	gsm_data_reg_empty();
 }
