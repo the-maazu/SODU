@@ -18,4 +18,10 @@ void buffer_gsm_data(void);
 
 void gsm_data_reg_empty(void);
 
+bool gsm_response_available(void);
+
+void command_gsm_module(uint8_t * string, size_t size);
+
+uint8_t * get_gsm_response(void);
+
 #endif /* GSM_DRIVER_H_ */

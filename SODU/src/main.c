@@ -30,6 +30,7 @@
  */
 #include <asf.h>
 #include "drivers/GSM_driver.h"
+#include <string.h>
 
 #define GSM_PORT &PORTC
 #define GSM_USART &USARTC0
@@ -46,27 +47,52 @@ int main (void)
 	gfx_mono_init();
 	gpio_set_pin_high(NHD_C12832A1Z_BACKLIGHT);
 	
+	gsm_init(GSM_PORT, GSM_USART);
+	
 	/* Enable medium and high level interrupts in the PMIC. */
 	PMIC.CTRL |= (PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm | PMIC_LOLVLEN_bm) ;
 
 	/* Enable the global interrupt flag. */
 	sei();
 	
-	/* gsm_init makes use of interrupt */
-	gsm_init(GSM_PORT, GSM_USART);
+	
+	/* test code */
+	char * string = "AT+SAPBR=3,1,\"Contype\",\"GPRS\"\r";
+	char response[2];
+	uint32_t i = 0;
 	
 	while(true)
 	{
+		command_gsm_module((uint8_t *) string, strlen(string));
+		
+		i = 1000000;
+		while(!gsm_response_available())
+		{
+			i--;
+			if(i == 0)
+			break;
+		}
+		if(i == 0)
+		gfx_mono_draw_string("Timeout"  , 20,8, &sysfont);
+		else
+		{
+			memcpy(response, (char *) get_gsm_response(), 2);
+			//strncpy(response,(char *) get_gsm_response(), 2);
+			gfx_mono_draw_string(response, 20,8, &sysfont);
+		}
 	}
 }
 
 
 ISR(GSM_RXC_vect)
 {
+	gpio_toggle_pin(LED0);
 	buffer_gsm_data();
 }
 
 ISR(GSM_DATA_REG_EMPTY_VECT)
 {
+	delay_us(50000);
+	gpio_toggle_pin(LED1);
 	gsm_data_reg_empty();
 }
