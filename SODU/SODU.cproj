@@ -343,6 +343,7 @@
     <Folder Include="src\ASF\xmega\utils\preprocessor\" />
     <Folder Include="src\config\" />
     <Folder Include="src\drivers" />
+    <Folder Include="src\http" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\ASF\common\components\display\st7565r\st7565r.c">
@@ -604,6 +605,12 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\drivers\usart_driver.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\http\http.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\http\http.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\main.c">
