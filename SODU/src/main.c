@@ -31,6 +31,7 @@
 #include <asf.h>
 #include "drivers/GSM_driver.h"
 #include <string.h>
+#include "http/http.h"
 
 #define GSM_PORT &PORTC
 #define GSM_USART &USARTC0
@@ -55,31 +56,14 @@ int main (void)
 	/* Enable the global interrupt flag. */
 	sei();
 	
-	
-	/* test code */
-	char * string = "ATE0\r";
-	char response[4];
-	uint32_t i = 0;
+	http_init();
 	
 	while(true)
 	{
-		command_gsm_module((uint8_t *) string, strlen(string));
+		delay_us(1000000);
+		gpio_toggle_pin(LED1);
 		
-		i = 250000;
-		while(!gsm_response_available())
-		{
-			i--;
-			if(i == 0)
-			break;
-		}
-		if(i == 0)
-		gfx_mono_draw_string("Timeout"  , 20,8, &sysfont);
-		else
-		{
-			memcpy(response, (char *) get_gsm_response(), 4);
-			//strncpy(response,(char *) get_gsm_response(), 2);
-			gfx_mono_draw_string(response, 20,8, &sysfont);
-		}
+		post_data( (uint8_t *)"hi", 2);
 	}
 }
 
