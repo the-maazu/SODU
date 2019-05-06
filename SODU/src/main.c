@@ -56,9 +56,12 @@ int main (void)
 	
 	/* Setup all 4 seats*/
 	seat_init(SEAT1_PORT, SEAT1_TIMER);
-	seat_init(SEAT2_PORT, SEAT2_TIMER);
-	seat_init(SEAT3_PORT, SEAT3_TIMER);
-	seat_init(SEAT4_PORT, SEAT4_TIMER);
+	//seat_init(SEAT2_PORT, SEAT2_TIMER);
+	//seat_init(SEAT3_PORT, SEAT3_TIMER);
+	//seat_init(SEAT4_PORT, SEAT4_TIMER);
+	
+	gfx_mono_init();
+	gpio_set_pin_high(NHD_C12832A1Z_BACKLIGHT);
 			
 	/* Enable medium and high level interrupts in the PMIC. */
 	PMIC.CTRL |= (PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm) ;
@@ -67,35 +70,36 @@ int main (void)
 	sei();
 	
 	stimulate_seat(SEAT1_PORT, SEAT1_TIMER);
-	stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
-	stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
-	stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
+	//stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
+	//stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
+	//stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
 	
 	while(true)
 	{
+		delay_us(1000000);
+		gfx_mono_draw_string( "Enter", 20, 8, &sysfont);
 	}
 }
 
 ISR(PORTA_INT0_vect)
 {
 	check_seat(SEAT1, SEAT1_PORT, SEAT1_TIMER);
-	stimulate_seat(SEAT1_PORT, SEAT1_TIMER);
 }
 
-ISR(PORTB_INT0_vect)
-{
-	check_seat(SEAT2, SEAT2_PORT, SEAT2_TIMER);
-	stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
-}
-
-ISR(PORTC_INT0_vect)
-{
-	check_seat(SEAT3, SEAT3_PORT, SEAT3_TIMER);
-	stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
-}
-
-ISR(PORTD_INT0_vect)
-{
-	check_seat(SEAT4, SEAT4_PORT, SEAT4_TIMER);
-	stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
-}
+//ISR(PORTB_INT0_vect)
+//{
+	//check_seat(SEAT2, SEAT2_PORT, SEAT2_TIMER);
+	//stimulate_seat(SEAT2_PORT, SEAT2_TIMER);
+//}
+//
+//ISR(PORTC_INT0_vect)
+//{
+	//check_seat(SEAT3, SEAT3_PORT, SEAT3_TIMER);
+	//stimulate_seat(SEAT3_PORT, SEAT3_TIMER);
+//}
+//
+//ISR(PORTD_INT0_vect)
+//{
+	//check_seat(SEAT4, SEAT4_PORT, SEAT4_TIMER);
+	//stimulate_seat(SEAT4_PORT, SEAT4_TIMER);
+//}
