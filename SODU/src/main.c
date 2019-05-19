@@ -37,8 +37,6 @@
 #define GPS_UART &USARTE0
 #define GPS_INTVECT USARTE0_RXC_vect
 
-uint8_t gps_data[82];
-
 int main (void)
 {
 	/* Insert system clock initialization code here (sysclk_init()). */
@@ -53,25 +51,14 @@ int main (void)
 	/* Enable the global interrupt flag. */
 	sei();
 	
-	/* test code*/
-	gfx_mono_init();
-	gpio_set_pin_high(NHD_C12832A1Z_BACKLIGHT);
-	
 	while(true)
 	{
-		/* test code*/
-		uint8_t gps_data[10];
-		if(gps_data_available())
-		{
-			memcpy(gps_data, get_gps_data(), 10);
-			gfx_mono_draw_string( (char *) gps_data , 20, 8, &sysfont);
-			gpio_toggle_pin(LED1);	
-		}	
+		while(!gps_data_available());
+		gfx_mono_draw_string( get_gps_data() , 20, 8, &sysfont);
 	}
 }
 
 ISR(GPS_INTVECT)
 {
 	buffer_gps_data();
-	gpio_toggle_pin(LED0);
 }

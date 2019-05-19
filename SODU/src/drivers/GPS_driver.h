@@ -19,6 +19,6 @@ void buffer_gps_data(void);
 
 bool gps_data_available(void);
 
-uint8_t * get_gps_data(void);
+char * get_gps_data(void);
 
 #endif /* GPS_DRIVER_H_ */
