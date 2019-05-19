@@ -59,15 +59,11 @@ uint8_t * command_for_response(uint8_t * string, size_t size)
 	}
 	if(i == 0)
 	{
-		memcpy( response, get_gsm_response(), 17);
-		gfx_mono_draw_string("Timeout"  , 20,8, &sysfont);
 		return (uint8_t *)"Timeout";
 	}
 	else
 	{
-		memcpy(response, (char *) get_gsm_response(), 17);
-		gfx_mono_draw_string((const char *)response, 20,8, &sysfont);
-		
+		memcpy(response, (char *) get_gsm_response(), 17);		
 		return response;
 	}
 }
@@ -156,11 +152,8 @@ void post_data(uint8_t * data, size_t size)
 	strcat(command, ",1000\r");
 
 	size_command = strlen(command);
-	
-	gfx_mono_draw_string(command, 20,8, &sysfont);
-	
+		
 	while ( memcmp("DOWNLOAD", command_for_response((uint8_t *) command, size_command), 1));
-	gpio_set_pin_low(LED0);
 	
 	while ( memcmp("OK", command_for_response((uint8_t *) data, size), 2));
 	
