@@ -66,7 +66,7 @@
 /* \brief  Receive buffer size: 2,4,8,16,32,64,128 or 256 bytes. */
 #define USART_RX_BUFFER_SIZE 128
 /* \brief Transmit buffer size: 2,4,8,16,32,64,128 or 256 bytes */
-#define USART_TX_BUFFER_SIZE 0
+#define USART_TX_BUFFER_SIZE 128
 /* \brief Receive buffer mask. */
 #define USART_RX_BUFFER_MASK ( USART_RX_BUFFER_SIZE - 1 )
 /* \brief Transmit buffer mask. */
@@ -80,6 +80,8 @@
 #error TX buffer size is not a power of 2
 #endif
 
+#define GetRXBufferIndex(_index) ( (_index) & USART_RX_BUFFER_MASK)
+#define GetTXBufferIndex(_index) ( (_index) & USART_TX_BUFFER_MASK)
 
 /* \brief USART transmit and receive ring buffer. */
 typedef struct USART_Buffer

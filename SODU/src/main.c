@@ -33,21 +33,27 @@
 #include "drivers/port_driver.h"
 #include "string.h"
 #include "drivers/TC_driver.h"
+#include "drivers/GSM_driver.h"
+#include "http/http.h"
 
-#define SEAT1 0
-#define SEAT2 1
-#define SEAT3 2
-#define SEAT4 3
+/* GSM macros*/
+#define GSM_PORT &PORTC
+#define GSM_USART &USARTC0
+#define GSM_DATA_REG_EMPTY_VECT USARTC0_DRE_vect
+#define GSM_RXC_vect USARTC0_RXC_vect
 
+/* Seat macros*/
 #define SEAT1_PORT &PORTA
-#define SEAT2_PORT &PORTC
-
+#define SEAT1_INTVECT PORTA_INT0_vect
+#define SEAT_TIMER TCC0
 #define STOP_CLOCK TCC0.CTRLA = ( TCC0.CTRLA & ~TC0_CLKSEL_gm ) | TC_CLKSEL_OFF_gc
 #define START_CLOCK TCC0.CTRLA = ( TCC0.CTRLA & ~TC0_CLKSEL_gm ) | TC_CLKSEL_DIV64_gc
 
+/* GPS macros*/
 #define GPS_PORT &PORTE
 #define GPS_UART &USARTE0
 #define GPS_INTVECT USARTE0_RXC_vect
+
 
 volatile uint8_t SEAT_MASK = 0x00;
 volatile bool sensing = false;
@@ -63,34 +69,86 @@ int main (void)
 	
 	/* Setup seats*/
 	seat_port_init(SEAT1_PORT);
-	//seat_port_init(SEAT2_PORT);
 	
 	/* set timer maximum value*/
-	TCC0.PER = 0xFFFF;
-
+	SEAT_TIMER.PER = 0xFFFF;
+	
 	gps_init(GPS_PORT, GPS_UART);
+	
+	gsm_init(GSM_PORT, GSM_USART);
 		
-	/* Enable medium and high level interrupts in the PMIC. */
+	/* Enable all level interrupts in the PMIC. */
 	PMIC.CTRL |= (PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm | PMIC_LOLVLEN_bm);
 
 	/* Enable the global interrupt flag. */
 	sei();
 	
+	http_init();
+	
+	char * gps_data;
+	char seat_mask_s[2];
+	
 	while(true)
 	{
 		stimulate_seat(SEAT1_PORT);
 		while(sensing);
-		//stimulate_seat(SEAT2_PORT);
-		//while(sensing);
+		
+		/* disable high level (seat interrupt) interrupt*/
+		PMIC.CTRL &= ~PMIC_HILVLEN_bm;
 		
 		while(!gps_data_available());
-		gfx_mono_draw_string( get_gps_data() , 20, 8, &sysfont);
+		gps_data = get_gps_data();
 		
+		/* disable med level (gps interrupt) interrupt*/
+		PMIC.CTRL &= ~PMIC_MEDLVLEN_bm;
 		
+		utoa(SEAT_MASK, seat_mask_s, 10);
+		char * data = malloc(21 + strlen(gps_data));
+		strcpy(data , "ID=1&gps=");
+		strcat( data , gps_data);
+		strcat(data, "&seat_mask=");
+		strcat(data, seat_mask_s);
+		
+		post_data( (uint8_t *) data, strlen(data));
+		
+		free(gps_data);
+		free(data);
+		
+		/* Enable med and high level interrupts in the PMIC. */
+		PMIC.CTRL |= (PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm );
 	}
 }
 
-ISR(PORTA_INT0_vect)
+void seat_port_init(PORT_t * port)
+{
+	PORT_SetPinAsOutput( port, PIN0_bp );
+	
+	PORT_SetPinsAsInput( port, PIN2_bm );
+	
+	/* Configure pin 2 as input, triggered on both edges. */
+	PORT_ConfigurePins( port,
+	PIN2_bm, // pin 2 supports full asynchronous sense
+	false,
+	false,
+	PORT_OPC_TOTEM_gc,
+	PORT_ISC_BOTHEDGES_gc);
+
+	
+	/* Configure Interrupt0 to have medium interrupt level, triggered by pin 2. */
+	PORT_ConfigureInterrupt0( port, PORT_INT0LVL_HI_gc, PIN2_bm );
+}
+
+void stimulate_seat(PORT_t * port)
+{
+	sensing = true;
+	
+	/* Clear CNT register*/
+	SEAT_TIMER.CNT = 0x0000;
+	START_CLOCK;
+	PORT_SetPins(port, PIN0_bm);
+}
+
+ISR(SEAT1_INTVECT)
 {	
 	STOP_CLOCK;
 	
@@ -117,64 +175,17 @@ ISR(PORTA_INT0_vect)
 	}
 }
 
-//ISR(PORTB_INT0_vect)
-//{
-	//STOP_CLOCK;
-	//
-	//gpio_toggle_pin(LED1);
-	//char string [9];
-	//
-	//if(PORTB.OUT & PIN0_bm)
-	//{
-		//START_CLOCK;
-		//PORT_ClearPins(&PORTB, PIN0_bm);
-		//return;
-	//}
-	//else
-	//{
-		//if(TCC0.CNT >= 13000)
-		//SEAT_MASK |= (1 << 0);
-		//else
-		//SEAT_MASK &= ~(1 << 0);
-		//
-		//gfx_mono_draw_string("        ", 20, 8 , &sysfont);
-		//gfx_mono_draw_string( utoa(TCC0.CNT, string, 10), 20, 8 , &sysfont);
-		//
-		//sensing = false;
-	//}
-//}
-
-
-void seat_port_init(PORT_t * port)
-{
-	PORT_SetPinAsOutput( port, PIN0_bp );
-	
-	PORT_SetPinsAsInput( port, PIN2_bm );
-	
-	/* Configure pin 2 as input, triggered on both edges. */
-	PORT_ConfigurePins( port,
-	PIN2_bm, // pin 2 supports full asynchronous sense
-	false,
-	false,
-	PORT_OPC_TOTEM_gc,
-	PORT_ISC_BOTHEDGES_gc);
-
-	
-	/* Configure Interrupt0 to have medium interrupt level, triggered by pin 2. */
-	PORT_ConfigureInterrupt0( port, PORT_INT0LVL_HI_gc, PIN2_bm );
-}
-
-void stimulate_seat(PORT_t * port)
-{
-	sensing = true;
-	
-	/* Clear CNT register*/
-	TCC0.CNT = 0x0000;
-	START_CLOCK;
-	PORT_SetPins(port, PIN0_bm);
-}
-
 ISR(GPS_INTVECT)
 {
 	buffer_gps_data();
+}
+
+ISR(GSM_RXC_vect)
+{
+	buffer_gsm_data();
+}
+
+ISR(GSM_DATA_REG_EMPTY_VECT)
+{
+	gsm_data_reg_empty();
 }

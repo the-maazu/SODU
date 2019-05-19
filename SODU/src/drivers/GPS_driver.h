@@ -11,8 +11,6 @@
 
 #include <asf.h>
 
-#define GetRXBufferIndex(_index) ( (_index) & USART_RX_BUFFER_MASK)
-
 void gps_init(PORT_t * GPS_port, USART_t * GPS_uart);
 
 void buffer_gps_data(void);
