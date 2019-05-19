@@ -29,6 +29,7 @@
  * Support and FAQ: visit <a href="https://www.microchip.com/support/">Microchip Support</a>
  */
 #include <asf.h>
+#include "drivers/GPS_driver.h"
 #include "drivers/port_driver.h"
 #include "string.h"
 #include "drivers/TC_driver.h"
@@ -43,6 +44,10 @@
 
 #define STOP_CLOCK TCC0.CTRLA = ( TCC0.CTRLA & ~TC0_CLKSEL_gm ) | TC_CLKSEL_OFF_gc
 #define START_CLOCK TCC0.CTRLA = ( TCC0.CTRLA & ~TC0_CLKSEL_gm ) | TC_CLKSEL_DIV64_gc
+
+#define GPS_PORT &PORTE
+#define GPS_UART &USARTE0
+#define GPS_INTVECT USARTE0_RXC_vect
 
 volatile uint8_t SEAT_MASK = 0x00;
 volatile bool sensing = false;
@@ -62,10 +67,9 @@ int main (void)
 	
 	/* set timer maximum value*/
 	TCC0.PER = 0xFFFF;
-	
-	gfx_mono_init();
-	gpio_set_pin_high(NHD_C12832A1Z_BACKLIGHT);
-			
+
+	gps_init(GPS_PORT, GPS_UART);
+		
 	/* Enable medium and high level interrupts in the PMIC. */
 	PMIC.CTRL |= (PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm | PMIC_LOLVLEN_bm);
 
@@ -77,7 +81,12 @@ int main (void)
 		stimulate_seat(SEAT1_PORT);
 		while(sensing);
 		//stimulate_seat(SEAT2_PORT);
-		//while(sensing);	
+		//while(sensing);
+		
+		while(!gps_data_available());
+		gfx_mono_draw_string( get_gps_data() , 20, 8, &sysfont);
+		
+		
 	}
 }
 
@@ -163,4 +172,9 @@ void stimulate_seat(PORT_t * port)
 	TCC0.CNT = 0x0000;
 	START_CLOCK;
 	PORT_SetPins(port, PIN0_bm);
+}
+
+ISR(GPS_INTVECT)
+{
+	buffer_gps_data();
 }

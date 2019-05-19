@@ -22,14 +22,14 @@ void gps_init(PORT_t * GPS_port, USART_t * GPS_uart)
 	PORT_SetPinAsInput( GPS_port, PIN2_bp );
 
 	/* Use USARTE0 and initialize buffers. */
-	USART_InterruptDriver_Initialize(&usart_data, GPS_uart, USART_DREINTLVL_HI_gc);
+	USART_InterruptDriver_Initialize(&usart_data, GPS_uart, USART_DREINTLVL_MED_gc);
 
 	/* USARTE0, 8 Data bits, No Parity, 1 Stop bit. */
 	USART_Format_Set(usart_data.usart, USART_CHSIZE_8BIT_gc,
                      USART_PMODE_DISABLED_gc, false);
 
 	/* Enable RXC interrupt. */
-	USART_RxdInterruptLevel_Set(usart_data.usart, USART_RXCINTLVL_HI_gc);
+	USART_RxdInterruptLevel_Set(usart_data.usart, USART_RXCINTLVL_MED_gc);
 
 	/* Set Baudrate to 9600 bps:
 	 * Use the default I/O clock frequency that is 2 MHz.
@@ -78,18 +78,18 @@ bool gps_data_available()
 	return gps_data_ready;
 }
 
-uint8_t * get_gps_data(void)
+char * get_gps_data(void)
 {
-	uint8_t * gps_data = malloc(gps_data_size);
+	char * gps_data = malloc(gps_data_size + 1);
 	
 	/* Copy GPGGA message to gps_data*/
 	for(uint8_t i = 0; i < gps_data_size; i++)
 	{
-		gps_data[i] = usart_data.buffer.RX[GetRXBufferIndex(usart_data.buffer.RX_Tail + i)];
+		gps_data[i] = USART_RXBuffer_GetByte(&usart_data);
 	}
+	gps_data[gps_data_size] = '\0';
 	
-	/* Point tail at next '$' symbol and start afresh */
-	usart_data.buffer.RX_Tail = (usart_data.buffer.RX_Tail + gps_data_size) &  USART_RX_BUFFER_MASK;
+	/*start afresh */
 	gps_data_ready = false;
 	gps_data_size = 0;
 	
