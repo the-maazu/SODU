@@ -25,14 +25,14 @@ void gsm_init(PORT_t * GSM_port, USART_t * GSM_uart)
 	PORT_SetPinAsInput( GSM_port, PIN6_bp );
 
 	/* Use USARTC0 and initialize buffers. */
-	USART_InterruptDriver_Initialize(&gsm_usart_data, GSM_uart, USART_DREINTLVL_LO_gc);
+	USART_InterruptDriver_Initialize(&gsm_usart_data, GSM_uart, USART_DREINTLVL_MED_gc);
 
 	/* USARTC0, 8 Data bits, No Parity, 1 Stop bit. */
 	USART_Format_Set(gsm_usart_data.usart, USART_CHSIZE_8BIT_gc,
                      USART_PMODE_DISABLED_gc, false);
 
 	/* Enable RXC interrupt. */
-	USART_RxdInterruptLevel_Set(gsm_usart_data.usart, USART_RXCINTLVL_LO_gc);
+	USART_RxdInterruptLevel_Set(gsm_usart_data.usart, USART_RXCINTLVL_MED_gc);
 
 	/* Set Baudrate to 19200 bps:
 	 * bsel = (1./2.^bscale)((2*(10^6))/(16 * 19200)-1)

@@ -20,7 +20,8 @@ PROGMEM_DECLARE(char const, http_init_at[]) =     "AT+HTTPINIT\r";
 PROGMEM_DECLARE(char const, http_term[]) =     "AT+HTTPTERM\r";
 //PROGMEM_DECLARE(char const, http_enable_ssl[]) =   "AT+HTTPSSL=1\r";
 PROGMEM_DECLARE(char const, http_para_cid[]) =     "AT+HTTPPARA=\"CID\",1\r";
-PROGMEM_DECLARE(char const, http_para_url[]) =     "AT+HTTPPARA=\"URL\",\"http://us-central1-tracktro.cloudfunctions.net/soduHttp\"\r";
+//PROGMEM_DECLARE(char const, http_para_url[]) =     "AT+HTTPPARA=\"URL\",\"http://us-central1-tracktro.cloudfunctions.net/soduHttp\"\r";
+PROGMEM_DECLARE(char const, http_para_url[]) =     "AT+HTTPPARA=\"URL\",\"http://tracktro.appspot.com/\"\r";
 //PROGMEM_DECLARE(char const, http_para_content[]) = "AT+HTTPPARA=\"CONTENT\",\"application/x-www-form-urlencoded\"\r";
 
 /* data 105 bytes long, 10000ms*/
@@ -153,12 +154,19 @@ void post_data(uint8_t * data, size_t size)
 
 	size_command = strlen(command);
 		
-	while ( memcmp("DOWNLOAD", command_for_response((uint8_t *) command, size_command), 1));
+	if ( memcmp("DOWNLOAD", command_for_response((uint8_t *) command, size_command), 1))
+	return;
 	
-	while ( memcmp("OK", command_for_response((uint8_t *) data, size), 2));
+	if ( memcmp("OK", command_for_response( data, size), 2))
+	return;
 	
 	size = strlen_P(http_post_action); 
-	while ( memcmp("OK", command_for_response((uint8_t *) read_pgm_string(http_post_action, size), size), 2));
+	if ( memcmp("OK", command_for_response((uint8_t *) read_pgm_string(http_post_action, size), size), 2))
+	return;
 	
-	while ( memcmp("+HTTPACTION:1,200,0", command_for_response((uint8_t *)"", 0), 2));
+	uint16_t i = 0xFFFF;
+	while( memcmp("+HTTPACTION:1,200,0", command_for_response((uint8_t *)"", 0), 11) & i)
+	{
+		i--;
+	}
 }

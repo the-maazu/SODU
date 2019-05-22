@@ -76,46 +76,42 @@ int main (void)
 	gps_init(GPS_PORT, GPS_UART);
 	
 	gsm_init(GSM_PORT, GSM_USART);
-		
-	/* Enable all level interrupts in the PMIC. */
-	PMIC.CTRL |= (PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm | PMIC_LOLVLEN_bm);
-
+	
+	/* enable low level (gsm) interrupts in the PMIC. */
+	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
+	
 	/* Enable the global interrupt flag. */
 	sei();
 	
 	http_init();
 	
-	char * gps_data;
-	char seat_mask_s[2];
+	gpio_toggle_pin(LED0);
+	
+	//char * gps_data;
+	//char seat_mask_s[2];
+	
+	char data[109];
 	
 	while(true)
 	{
-		stimulate_seat(SEAT1_PORT);
-		while(sensing);
+		//stimulate_seat(SEAT1_PORT);
+		//while(sensing);
+		//
+		//while(!gps_data_available());
+		//gps_data = get_gps_data();
+		//
+		//utoa(SEAT_MASK, seat_mask_s, 10);
+		//char * data = malloc(21 + strlen(gps_data));
+		//strcpy(data , "ID=1&gps=");
+		//strcat( data , gps_data);
+		//strcat(data, "&seat_mask=");
+		//strcat(data, seat_mask_s);
 		
-		/* disable high level (seat interrupt) interrupt*/
-		PMIC.CTRL &= ~PMIC_HILVLEN_bm;
-		
-		while(!gps_data_available());
-		gps_data = get_gps_data();
-		
-		/* disable med level (gps interrupt) interrupt*/
-		PMIC.CTRL &= ~PMIC_MEDLVLEN_bm;
-		
-		utoa(SEAT_MASK, seat_mask_s, 10);
-		char * data = malloc(21 + strlen(gps_data));
-		strcpy(data , "ID=1&gps=");
-		strcat( data , gps_data);
-		strcat(data, "&seat_mask=");
-		strcat(data, seat_mask_s);
-		
+		strcpy(data, "gps=$GPGGA,11573 9.00,4158.8441367,N,09147.4416929,W,4,13,0.9,255.747,M,-32.00,M,01,0000*6E&seat_mask=7&ID=1");
+		if(strlen(data) < 108)
+		gpio_toggle_pin(LED0);
 		post_data( (uint8_t *) data, strlen(data));
-		
-		free(gps_data);
-		free(data);
-		
-		/* Enable med and high level interrupts in the PMIC. */
-		PMIC.CTRL |= (PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm );
+		gpio_toggle_pin(LED1);
 	}
 }
 
@@ -146,14 +142,12 @@ void stimulate_seat(PORT_t * port)
 	SEAT_TIMER.CNT = 0x0000;
 	START_CLOCK;
 	PORT_SetPins(port, PIN0_bm);
+	gpio_toggle_pin(LED0);
 }
 
 ISR(SEAT1_INTVECT)
 {	
 	STOP_CLOCK;
-	
-	gpio_toggle_pin(LED1);
-	char string [9];
 	
 	if(PORTA.OUT & PIN0_bm)
 	{
@@ -167,10 +161,6 @@ ISR(SEAT1_INTVECT)
 		SEAT_MASK |= (1 << 0);
 		else
 		SEAT_MASK &= ~(1 << 0);
-		
-		gfx_mono_draw_string("        ", 20, 8 , &sysfont);
-		gfx_mono_draw_string( utoa(SEAT_MASK, string, 2), 20, 8 , &sysfont);
-		
 		sensing = false;
 	}
 }

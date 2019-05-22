@@ -22,14 +22,14 @@ void gps_init(PORT_t * GPS_port, USART_t * GPS_uart)
 	PORT_SetPinAsInput( GPS_port, PIN2_bp );
 
 	/* Use USARTE0 and initialize buffers. */
-	USART_InterruptDriver_Initialize(&usart_data, GPS_uart, USART_DREINTLVL_MED_gc);
+	USART_InterruptDriver_Initialize(&usart_data, GPS_uart, USART_DREINTLVL_LO_gc);
 
 	/* USARTE0, 8 Data bits, No Parity, 1 Stop bit. */
 	USART_Format_Set(usart_data.usart, USART_CHSIZE_8BIT_gc,
                      USART_PMODE_DISABLED_gc, false);
 
 	/* Enable RXC interrupt. */
-	USART_RxdInterruptLevel_Set(usart_data.usart, USART_RXCINTLVL_MED_gc);
+	USART_RxdInterruptLevel_Set(usart_data.usart, USART_RXCINTLVL_LO_gc);
 
 	/* Set Baudrate to 9600 bps:
 	 * Use the default I/O clock frequency that is 2 MHz.
