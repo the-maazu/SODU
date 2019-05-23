@@ -43,7 +43,7 @@
 #define GSM_RXC_vect USARTC0_RXC_vect
 
 /* Seat macros*/
-#define SEAT1_PORT &PORTA
+#define SEAT1_PORT PORTA
 #define SEAT1_INTVECT PORTA_INT0_vect
 #define SEAT_TIMER TCC0
 #define STOP_CLOCK TCC0.CTRLA = ( TCC0.CTRLA & ~TC0_CLKSEL_gm ) | TC_CLKSEL_OFF_gc
@@ -53,6 +53,15 @@
 #define GPS_PORT &PORTE
 #define GPS_UART &USARTE0
 #define GPS_INTVECT USARTE0_RXC_vect
+
+/* interrupt macros*/
+#define  ENABLE_SEAT_SENSOR PMIC.CTRL |= PMIC_HILVLEN_bm
+#define ENABLE_GPS PMIC.CTRL |= PMIC_LOLVLEN_bm
+#define ENABLE_GSM PMIC.CTRL |= PMIC_MEDLVLEN_bm
+
+#define  DISABLE_SEAT_SENSOR PMIC.CTRL &= ~PMIC_HILVLEN_bm
+#define DISABLE_GPS PMIC.CTRL &= ~PMIC_LOLVLEN_bm
+#define DISABLE_GSM PMIC.CTRL &= ~PMIC_MEDLVLEN_bm
 
 
 volatile uint8_t SEAT_MASK = 0x00;
@@ -67,102 +76,86 @@ int main (void)
 	
 	board_init();
 	
+	gfx_mono_init();
+	gpio_set_pin_high(NHD_C12832A1Z_BACKLIGHT);
+	
 	/* Setup seats*/
-	seat_port_init(SEAT1_PORT);
+	seat_port_init(&SEAT1_PORT);
 	
 	/* set timer maximum value*/
 	SEAT_TIMER.PER = 0xFFFF;
 	
 	gps_init(GPS_PORT, GPS_UART);
-	
 	gsm_init(GSM_PORT, GSM_USART);
 	
-	/* enable low level (gsm) interrupts in the PMIC. */
-	PMIC.CTRL |= PMIC_MEDLVLEN_bm;
+	ENABLE_GSM;
+	ENABLE_GPS;
 	
 	/* Enable the global interrupt flag. */
 	sei();
 	
 	http_init();
-	
 	gpio_toggle_pin(LED0);
 	
-	//char * gps_data;
-	//char seat_mask_s[2];
-	
-	char data[109];
+	char * gps_data;
+	char * data;
+	char seat_mask_s[2];
+	uint16_t timing = 0;
 	
 	while(true)
-	{
-		//stimulate_seat(SEAT1_PORT);
-		//while(sensing);
-		//
-		//while(!gps_data_available());
-		//gps_data = get_gps_data();
-		//
-		//utoa(SEAT_MASK, seat_mask_s, 10);
-		//char * data = malloc(21 + strlen(gps_data));
-		//strcpy(data , "ID=1&gps=");
-		//strcat( data , gps_data);
-		//strcat(data, "&seat_mask=");
-		//strcat(data, seat_mask_s);
+	{		
+		cli();
 		
-		strcpy(data, "gps=$GPGGA,11573 9.00,4158.8441367,N,09147.4416929,W,4,13,0.9,255.747,M,-32.00,M,01,0000*6E&seat_mask=7&ID=1");
-		if(strlen(data) < 108)
-		gpio_toggle_pin(LED0);
+		uint8_t i = 15;
+		uint32_t average = 0;
+		while(i)
+		{
+			SEAT_TIMER.CNT = 0x0000;
+			START_CLOCK;
+			PORT_SetPins(&SEAT1_PORT, PIN0_bm);
+			while( !(SEAT1_PORT.IN & PIN2_bm));
+			PORT_ClearPins(&SEAT1_PORT, PIN0_bm);
+			while( SEAT1_PORT.IN & PIN2_bm);
+			STOP_CLOCK;
+			
+			average += SEAT_TIMER.CNT;
+			i--;
+		}
+		average = average/255;
+		
+		if(average > 650)
+		SEAT_MASK |= 1 << 0;
+		else
+		SEAT_MASK &= ~(1 << 0);
+		
+		sei();
+		
+		timing = 0xFFFF;
+		while((!gps_data_available()) & timing)
+		{
+			timing--;
+		}
+		gps_data = get_gps_data();
+		
+		utoa(SEAT_MASK, seat_mask_s, 10);
+		data = malloc(21 + strlen(gps_data));
+		strcpy(data , "ID=1&gps=");
+		strcat( data , gps_data);
+		strcat(data, "&seat_mask=");
+		strcat(data, seat_mask_s);
+		
 		post_data( (uint8_t *) data, strlen(data));
 		gpio_toggle_pin(LED1);
+		
+		free(gps_data);
+		free(data);
 	}
 }
 
 void seat_port_init(PORT_t * port)
 {
 	PORT_SetPinAsOutput( port, PIN0_bp );
-	
 	PORT_SetPinsAsInput( port, PIN2_bm );
-	
-	/* Configure pin 2 as input, triggered on both edges. */
-	PORT_ConfigurePins( port,
-	PIN2_bm, // pin 2 supports full asynchronous sense
-	false,
-	false,
-	PORT_OPC_TOTEM_gc,
-	PORT_ISC_BOTHEDGES_gc);
-
-	
-	/* Configure Interrupt0 to have medium interrupt level, triggered by pin 2. */
-	PORT_ConfigureInterrupt0( port, PORT_INT0LVL_HI_gc, PIN2_bm );
-}
-
-void stimulate_seat(PORT_t * port)
-{
-	sensing = true;
-	
-	/* Clear CNT register*/
-	SEAT_TIMER.CNT = 0x0000;
-	START_CLOCK;
-	PORT_SetPins(port, PIN0_bm);
-	gpio_toggle_pin(LED0);
-}
-
-ISR(SEAT1_INTVECT)
-{	
-	STOP_CLOCK;
-	
-	if(PORTA.OUT & PIN0_bm)
-	{
-		START_CLOCK;
-		PORT_ClearPins(&PORTA, PIN0_bm);
-		return;
-	}
-	else
-	{
-		if(TCC0.CNT >= 13000)
-		SEAT_MASK |= (1 << 0);
-		else
-		SEAT_MASK &= ~(1 << 0);
-		sensing = false;
-	}
 }
 
 ISR(GPS_INTVECT)
