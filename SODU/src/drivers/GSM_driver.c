@@ -15,14 +15,11 @@ volatile uint8_t gsm_response_size = 0;
 volatile uint8_t gsm_response_ready = false;
 
 void gsm_init(PORT_t * GSM_port, USART_t * GSM_uart)
-{
-	/* Remap USART of PORTC to pin 4-7 */
-	PORTC.REMAP |= 0x10;																			
-	
+{																				
   	/* PC7 (TXD0) as output. */
-	PORT_SetPinAsOutput( GSM_port, PIN7_bp );
+	PORT_SetPinAsOutput( GSM_port, PIN3_bp );
 	/* PC6 (RXD0) as input. */
-	PORT_SetPinAsInput( GSM_port, PIN6_bp );
+	PORT_SetPinAsInput( GSM_port, PIN2_bp );
 
 	/* Use USARTC0 and initialize buffers. */
 	USART_InterruptDriver_Initialize(&gsm_usart_data, GSM_uart, USART_DREINTLVL_MED_gc);

@@ -13,6 +13,6 @@
 
 void http_init(void);
 
-void post_data(uint8_t * data, size_t size);
+bool post_data(uint8_t * data, size_t size);
 
 #endif /* HTTP_H_ */

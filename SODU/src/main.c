@@ -43,11 +43,13 @@
 #define GSM_RXC_vect USARTC0_RXC_vect
 
 /* Seat macros*/
-#define SEAT1_PORT PORTA
+#define SEAT_PORT PORTA
+#define SEAT2_PORT PORTB
 #define SEAT1_INTVECT PORTA_INT0_vect
 #define SEAT_TIMER TCC0
 #define STOP_CLOCK TCC0.CTRLA = ( TCC0.CTRLA & ~TC0_CLKSEL_gm ) | TC_CLKSEL_OFF_gc
-#define START_CLOCK TCC0.CTRLA = ( TCC0.CTRLA & ~TC0_CLKSEL_gm ) | TC_CLKSEL_DIV64_gc
+#define START_CLOCK TCC0.CTRLA = ( TCC0.CTRLA & ~TC0_CLKSEL_gm ) | TC_CLKSEL_DIV1024_gc
+#define SENSING_ITERATIONS 10
 
 /* GPS macros*/
 #define GPS_PORT &PORTE
@@ -80,7 +82,8 @@ int main (void)
 	gpio_set_pin_high(NHD_C12832A1Z_BACKLIGHT);
 	
 	/* Setup seats*/
-	seat_port_init(&SEAT1_PORT);
+	seat_port_init(&SEAT_PORT);
+	seat_port_init(&SEAT2_PORT);
 	
 	/* set timer maximum value*/
 	SEAT_TIMER.PER = 0xFFFF;
@@ -88,13 +91,13 @@ int main (void)
 	gps_init(GPS_PORT, GPS_UART);
 	gsm_init(GSM_PORT, GSM_USART);
 	
-	ENABLE_GSM;
-	ENABLE_GPS;
-	
 	/* Enable the global interrupt flag. */
 	sei();
 	
+	ENABLE_GSM;
 	http_init();
+	DISABLE_GSM;
+	
 	gpio_toggle_pin(LED0);
 	
 	char * gps_data;
@@ -102,40 +105,102 @@ int main (void)
 	char seat_mask_s[2];
 	uint16_t timing = 0;
 	
+	char timer_count[6];
+	uint8_t i = 0;
+	uint32_t average = 0;
 	while(true)
 	{		
 		cli();
 		
-		uint8_t i = 15;
-		uint32_t average = 0;
+		/* Seat 1 sensing*/
+		i = SENSING_ITERATIONS;
+		average = 0;
 		while(i)
 		{
 			SEAT_TIMER.CNT = 0x0000;
 			START_CLOCK;
-			PORT_SetPins(&SEAT1_PORT, PIN0_bm);
-			while( !(SEAT1_PORT.IN & PIN2_bm));
-			PORT_ClearPins(&SEAT1_PORT, PIN0_bm);
-			while( SEAT1_PORT.IN & PIN2_bm);
+			PORT_SetPins(&SEAT_PORT, PIN0_bm);
+			while( !(SEAT_PORT.IN & PIN2_bm));
+			PORT_ClearPins(&SEAT_PORT, PIN0_bm);
+			while( SEAT_PORT.IN & PIN2_bm);
 			STOP_CLOCK;
 			
 			average += SEAT_TIMER.CNT;
 			i--;
 		}
-		average = average/255;
 		
-		if(average > 650)
-		SEAT_MASK |= 1 << 0;
+		if(TC_GetOverflowFlag(&SEAT_TIMER))
+		{
+			gpio_toggle_pin(LED0);
+			TC_ClearOverflowFlag(&SEAT_TIMER);
+		}
+		
+		average = average/SENSING_ITERATIONS;
+		
+		//if(average < 2000)
+		//gpio_set_pin_low(LED0);
+		//else
+		//gpio_set_pin_high(LED0);
+		
+		if(average > 680)
+		{
+			gpio_set_pin_low(LED0);
+			SEAT_MASK |= (0x01 << 0); 
+		}
 		else
-		SEAT_MASK &= ~(1 << 0);
+		{
+			gpio_set_pin_high(LED0);
+			SEAT_MASK &=  ~(0x01<<0);
+		}
+		
+		gfx_mono_draw_string("     ", 20, 8, &sysfont);
+		gfx_mono_draw_string(utoa(average, timer_count, 10), 20, 8, &sysfont);
+				
+		/* Seat 2 sensing */
+		i = SENSING_ITERATIONS;
+		average = 0;
+		while(i)
+		{
+			SEAT_TIMER.CNT = 0x0000;
+			START_CLOCK;
+			PORT_SetPins(&SEAT2_PORT, PIN0_bm);
+			while( !(SEAT2_PORT.IN & PIN2_bm));
+			PORT_ClearPins(&SEAT2_PORT, PIN0_bm);
+			while( SEAT2_PORT.IN & PIN2_bm);
+			STOP_CLOCK;
+			
+			average += SEAT_TIMER.CNT;
+			i--;
+		}
+		
+		average = average/SENSING_ITERATIONS;
+		
+		if(average > 100)
+		{
+			gpio_set_pin_low(LED1);
+			SEAT_MASK |= (0x01 << 1);
+		}
+		else
+		{
+			gpio_set_pin_high(LED1);
+			SEAT_MASK &=  ~(0x01<<1);
+		}
+		
+		gfx_mono_draw_string("     ", 20, 8, &sysfont);
+		gfx_mono_draw_string(utoa(average, timer_count, 10), 20, 8, &sysfont); 
 		
 		sei();
 		
-		timing = 0xFFFF;
+		ENABLE_GPS;
+		timing = 10000;
 		while((!gps_data_available()) & timing)
 		{
 			timing--;
 		}
+		if(timing ==0)
+		continue;
 		gps_data = get_gps_data();
+		DISABLE_GPS;
 		
 		utoa(SEAT_MASK, seat_mask_s, 10);
 		data = malloc(21 + strlen(gps_data));
@@ -144,8 +209,22 @@ int main (void)
 		strcat(data, "&seat_mask=");
 		strcat(data, seat_mask_s);
 		
-		post_data( (uint8_t *) data, strlen(data));
-		gpio_toggle_pin(LED1);
+		gfx_mono_draw_string("       ", 80, 20, &sysfont);
+		gfx_mono_draw_string("sending", 80, 20, &sysfont);
+		
+		ENABLE_GSM;
+		if(post_data( (uint8_t *) data, strlen(data)))
+		{
+			DISABLE_GSM;
+			gfx_mono_draw_string("       ", 80, 20, &sysfont);
+			gfx_mono_draw_string("sent", 80, 20, &sysfont);	
+		}
+		else
+		{
+			DISABLE_GSM;
+			gfx_mono_draw_string("       ", 80, 20, &sysfont);
+			gfx_mono_draw_string("sent", 80, 20, &sysfont);
+		}
 		
 		free(gps_data);
 		free(data);
@@ -156,6 +235,11 @@ void seat_port_init(PORT_t * port)
 {
 	PORT_SetPinAsOutput( port, PIN0_bp );
 	PORT_SetPinsAsInput( port, PIN2_bm );
+	
+	if( port->IN & PIN2_bm)
+	{
+		gpio_toggle_pin(LED1);
+	}
 }
 
 ISR(GPS_INTVECT)

@@ -140,7 +140,7 @@ void http_init()
 	
 }
 
-void post_data(uint8_t * data, size_t size)
+bool post_data(uint8_t * data, size_t size)
 {	
 	char * size_string = NULL;
 	itoa(size, size_string, 10);
@@ -153,20 +153,27 @@ void post_data(uint8_t * data, size_t size)
 	strcat(command, ",1000\r");
 
 	size_command = strlen(command);
-		
+			
 	if ( memcmp("DOWNLOAD", command_for_response((uint8_t *) command, size_command), 1))
-	return;
+	return false;
 	
 	if ( memcmp("OK", command_for_response( data, size), 2))
-	return;
+	return false;
 	
 	size = strlen_P(http_post_action); 
 	if ( memcmp("OK", command_for_response((uint8_t *) read_pgm_string(http_post_action, size), size), 2))
-	return;
+	return false;
 	
 	uint16_t i = 0xFFFF;
 	while( memcmp("+HTTPACTION:1,200,0", command_for_response((uint8_t *)"", 0), 11) & i)
 	{
+		
 		i--;
 	}
+	
+	if(i == 0){
+		return false;
+	}
+	else
+	return true;
 }
